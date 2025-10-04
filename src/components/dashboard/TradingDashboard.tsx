@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import {
   Box,
   Card,
@@ -19,7 +19,7 @@ import {
   InputAdornment,
   Alert,
 } from "@mui/material";
-import { TrendingUp, TrendingDown, Search } from "@mui/icons-material";
+import { TrendingUp, TrendingDown, Search, PlayArrow, Stop } from "@mui/icons-material";
 import dynamic from "next/dynamic";
 import { useFinnhubQuote } from "@/hooks/useFinnhubQuote";
 
@@ -32,11 +32,45 @@ const CRYPTO_SYMBOLS = ["BINANCE:BTCUSDT", "BINANCE:ETHUSDT", "BINANCE:SOLUSDT"]
 
 export default function TradingDashboard() {
   const [customSymbol, setCustomSymbol] = useState("");
-  const { quote, history, isLoading, error, setSymbol } =
+  const { quote, history, isLoading, error, isStreaming, setSymbol, toggleStreaming } =
     useFinnhubQuote({ symbol: DEFAULT_SYMBOLS[0] });
 
   // Get current symbol from quote or use default
   const currentSymbol = quote?.symbol || DEFAULT_SYMBOLS[0];
+
+  // Price blink effect state
+  const [priceFlash, setPriceFlash] = useState<"up" | "down" | null>(null);
+  const prevPriceRef = useRef<number | null>(null);
+
+  // Detect price changes and trigger flash
+  useEffect(() => {
+    if (!quote) return;
+    
+    const currentPrice = quote.current;
+    const prevPrice = prevPriceRef.current;
+
+    // Always update the ref for next comparison
+    prevPriceRef.current = currentPrice;
+
+    if (prevPrice !== null && Math.abs(currentPrice - prevPrice) > 0.01) {
+      // Price changed, trigger flash
+      const direction = currentPrice > prevPrice ? "up" : "down";
+      setPriceFlash(direction);
+      
+      // Remove flash after animation
+      const timer = setTimeout(() => {
+        setPriceFlash(null);
+      }, 600);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [quote]);
+
+  // Reset price ref when symbol changes
+  useEffect(() => {
+    prevPriceRef.current = null;
+    setPriceFlash(null);
+  }, [currentSymbol]);
 
   const handleSymbolChange = (_: unknown, nextSymbol: string | null) => {
     if (!nextSymbol) return;
@@ -90,6 +124,27 @@ export default function TradingDashboard() {
         </Typography>
       </Alert>
 
+      <Alert 
+        severity={isStreaming ? "success" : "warning"} 
+        sx={{ mb: 3 }}
+        action={
+          <Button
+            color="inherit"
+            size="small"
+            variant="outlined"
+            onClick={toggleStreaming}
+            disabled={isLoading}
+            startIcon={isStreaming ? <Stop /> : <PlayArrow />}
+          >
+            {isStreaming ? "Stop Streaming" : "Start Streaming"}
+          </Button>
+        }
+      >
+        <Typography variant="body2">
+          <strong>WebSocket Status:</strong> {isStreaming ? "Connected - Receiving real-time data (symbol changes will auto-switch subscription)" : "Disconnected - Click 'Start Streaming' to receive live updates"}
+        </Typography>
+      </Alert>
+
       <Card sx={{ mb: 4 }}>
         <CardContent>
           <Stack spacing={3}>
@@ -104,9 +159,33 @@ export default function TradingDashboard() {
                   {currentSymbol}
                 </Typography>
                 <Stack direction="row" alignItems="center" spacing={2}>
-                  <Typography variant="h3" sx={{ fontWeight: 600 }}>
-                    {quote ? quote.current.toFixed(2) : "--"}
-                  </Typography>
+                  <Box
+                    sx={{
+                      px: 2,
+                      py: 0.5,
+                      borderRadius: 1,
+                      transition: "all 0.2s ease-out",
+                      backgroundColor: priceFlash === "up" 
+                        ? "rgba(46, 125, 50, 0.35)" 
+                        : priceFlash === "down" 
+                        ? "rgba(211, 47, 47, 0.35)" 
+                        : "transparent",
+                      boxShadow: priceFlash === "up"
+                        ? "0 0 12px rgba(46, 125, 50, 0.4)"
+                        : priceFlash === "down"
+                        ? "0 0 12px rgba(211, 47, 47, 0.4)"
+                        : "none",
+                    }}
+                  >
+                    <Typography 
+                      variant="h3" 
+                      sx={{ 
+                        fontWeight: 600,
+                      }}
+                    >
+                      {quote ? quote.current.toFixed(2) : "--"}
+                    </Typography>
+                  </Box>
                   {quote && (
                     <Chip
                       color={quote.change >= 0 ? "success" : "error"}
@@ -199,7 +278,6 @@ export default function TradingDashboard() {
           <Card sx={{ height: { xs: 320, md: 420 }, display: "flex", flexDirection: "column" }}>
             <CardHeader
               title={<Typography variant="subtitle1">Live price action</Typography>}
-              subheader="Streaming data updates every second"
             />
             <CardContent sx={{ flexGrow: 1, minHeight: 0 }}>
               <LightweightChart
@@ -228,25 +306,6 @@ export default function TradingDashboard() {
               </Stack>
             </CardContent>
           </Card>
-        </Grid>
-
-        <Grid size={{ xs: 1, md: 4 }}>
-          <InsightCard
-            title="Streaming data"
-            description="Pricing updates every second enable faster strategy testing and alerting."
-          />
-        </Grid>
-        <Grid size={{ xs: 1, md: 4 }}>
-          <InsightCard
-            title="Extend with indicators"
-            description="Add moving averages, MACD, VWAP and more without changing this layout."
-          />
-        </Grid>
-        <Grid size={{ xs: 1, md: 4 }}>
-          <InsightCard
-            title="Portfolio ready"
-            description="Plug in watchlists, order tickets, and risk analytics modules seamlessly."
-          />
         </Grid>
       </Grid>
     </Box>
@@ -290,26 +349,3 @@ function MiniMetric({ label, value, color }: MiniMetricProps) {
     </Stack>
   );
 }
-
-interface InsightCardProps {
-  title: string;
-  description: string;
-}
-
-function InsightCard({ title, description }: InsightCardProps) {
-  return (
-    <Card sx={{ height: "100%" }}>
-      <CardContent>
-        <Stack spacing={1}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-            {title}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {description}
-          </Typography>
-        </Stack>
-      </CardContent>
-    </Card>
-  );
-}
-
