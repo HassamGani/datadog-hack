@@ -5,7 +5,6 @@ import DashboardSkeleton from "@/components/dashboard/DashboardSkeleton";
 const TradingDashboard = dynamic(
   () => import("@/components/dashboard/TradingDashboard"),
   {
-    // ssr: false,
     loading: () => <DashboardSkeleton />,
   }
 );

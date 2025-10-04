@@ -75,6 +75,7 @@ export function useFinnhubQuote(
   useEffect(() => {
     let intervalId: NodeJS.Timeout | undefined;
     setIsLoading(true);
+    setHistory([]); // Clear history when symbol changes
 
     fetchQuote(symbol);
 
