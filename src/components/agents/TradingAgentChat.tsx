@@ -72,12 +72,38 @@ export default function TradingAgentChat({ context, setIndicators, addUsefulSour
         }),
       });
 
+      // Clone response so we can read it multiple times if needed
+      const responseClone = response.clone();
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to get response from agent");
+        let errorMessage = "Failed to get response from agent";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          // If JSON parsing fails, try to get text from clone
+          try {
+            const errorText = await responseClone.text();
+            errorMessage = errorText || `Server error: ${response.status} ${response.statusText}`;
+          } catch {
+            errorMessage = `Server error: ${response.status} ${response.statusText}`;
+          }
+        }
+        throw new Error(errorMessage);
       }
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (e) {
+        try {
+          const responseText = await responseClone.text();
+          console.error("Failed to parse response as JSON:", responseText);
+          throw new Error("Received invalid response from server. Check console for details.");
+        } catch {
+          throw new Error("Received invalid response from server (could not read response body).");
+        }
+      }
 
       // Check if AI wants to use tools
       if (data.toolCalls && data.toolCalls.length > 0) {
@@ -106,7 +132,13 @@ export default function TradingAgentChat({ context, setIndicators, addUsefulSour
                 if (results.length > 0) {
                   const resultSummary = results
                     .slice(0, 5) // Top 5 results
-                    .map((r: any, i: number) => `${i + 1}. ${r.title}\n   URL: ${r.url}\n   ${r.snippet.substring(0, 100)}...`)
+                    .map((r: any, i: number) => {
+                      const snippet = r.snippet || "No description available";
+                      const truncatedSnippet = snippet.length > 100 
+                        ? snippet.substring(0, 100) + "..." 
+                        : snippet;
+                      return `${i + 1}. ${r.title}\n   URL: ${r.url}\n   ${truncatedSnippet}`;
+                    })
                     .join("\n\n");
                   
                   toolResults.push(`search_web: Found ${results.length} results:\n\n${resultSummary}`);
@@ -114,22 +146,38 @@ export default function TradingAgentChat({ context, setIndicators, addUsefulSour
                   toolResults.push(`search_web: No results found for "${toolCall.arguments.query}"`);
                 }
               } else {
-                toolResults.push(`search_web: Error searching - ${searchResponse.statusText}`);
+                // Handle error response
+                let errorMessage = `Error searching - ${searchResponse.statusText}`;
+                try {
+                  const errorData = await searchResponse.json();
+                  errorMessage = errorData.error || errorMessage;
+                } catch {
+                  // Ignore JSON parse errors for error response
+                }
+                console.error("Search API error:", errorMessage);
+                toolResults.push(`search_web: ${errorMessage}`);
               }
             } catch (err) {
               console.error("Error calling search API:", err);
-              toolResults.push(`search_web: Failed to search the web`);
+              const errorMsg = err instanceof Error ? err.message : "Failed to search the web";
+              toolResults.push(`search_web: ${errorMsg}`);
             }
           } else {
             // Execute other tools normally
-            const result = executeTool(
-              toolCall.function,
-              toolCall.arguments,
-              context,
-              setIndicators,
-              addUsefulSource
-            );
-            toolResults.push(`${toolCall.function}: ${result}`);
+            try {
+              const result = executeTool(
+                toolCall.function,
+                toolCall.arguments,
+                context,
+                setIndicators,
+                addUsefulSource
+              );
+              toolResults.push(`${toolCall.function}: ${result}`);
+            } catch (err) {
+              console.error(`Error executing tool ${toolCall.function}:`, err);
+              const errorMsg = err instanceof Error ? err.message : "Tool execution failed";
+              toolResults.push(`${toolCall.function}: Error - ${errorMsg}`);
+            }
           }
         }
 

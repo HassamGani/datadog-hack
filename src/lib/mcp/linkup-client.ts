@@ -17,14 +17,15 @@ let linkupClient: LinkupClient | null = null;
  */
 function getLinkupClient(): LinkupClient {
   if (!linkupClient) {
-    const apiKey = process.env.NEXT_PUBLIC_LINKUP_API_KEY;
+    // Use server-side env var (without NEXT_PUBLIC prefix)
+    const apiKey = process.env.LINKUP_API_KEY || process.env.NEXT_PUBLIC_LINKUP_API_KEY;
     
     if (!apiKey) {
-      throw new Error("NEXT_PUBLIC_LINKUP_API_KEY is not set");
+      throw new Error("LINKUP_API_KEY is not configured. Please add it to your .env.local file to enable web search.");
     }
 
     linkupClient = new LinkupClient({ apiKey });
-    console.log("Linkup SDK client initialized successfully");
+    console.log("✅ Linkup SDK client initialized successfully");
   }
 
   return linkupClient;
@@ -49,17 +50,28 @@ export async function searchWeb(
 
     // Transform results into our SearchResult format
     if (response.results && Array.isArray(response.results)) {
-      return response.results.map((result: any) => ({
-        title: result.name || result.title || "Untitled",
-        url: result.url || "",
-        snippet: result.content || result.snippet || "",
-      }));
+      return response.results
+        .filter((result: any) => result && (result.name || result.title) && result.url) // Filter out invalid results
+        .map((result: any) => ({
+          title: (result.name || result.title || "Untitled").trim(),
+          url: (result.url || "").trim(),
+          snippet: (result.content || result.snippet || "No description available").trim().substring(0, 500), // Limit snippet length
+        }));
     }
 
     return [];
   } catch (error) {
-    console.error("Error searching web with Linkup:", error);
-    throw error;
+    console.error("❌ Error searching web with Linkup:", error);
+    
+    // Provide more helpful error messages
+    if (error instanceof Error) {
+      if (error.message.includes("API key") || error.message.includes("LINKUP_API_KEY")) {
+        throw new Error("Linkup API key is not configured. Add LINKUP_API_KEY to .env.local to enable web search.");
+      }
+      throw new Error(`Web search failed: ${error.message}`);
+    }
+    
+    throw new Error("Failed to search web. Please try again later.");
   }
 }
 

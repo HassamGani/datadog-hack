@@ -154,3 +154,4 @@ Possible improvements:
 - Add a "Refresh" button for manual data updates
 - Show a subtle indicator when auto-fetching occurs
 
+

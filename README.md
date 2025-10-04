@@ -81,6 +81,10 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 - Interactive charts powered by TradingView Lightweight Charts
 - Real-time price updates with visual feedback
 - Organized dashboard with multiple panels
+- **Beautiful icons** - Enhanced with Lucide React icons throughout the interface
+  - Semantic icons for all metrics and indicators
+  - Professional, modern design language
+  - Improved visual hierarchy and scannability
 
 ## Using the AI Assistant
 
@@ -96,3 +100,15 @@ Example commands:
 - "What does MACD tell us about this stock?"
 - "Search for technical analysis guides"
 - "Find news about [symbol]"
+
+## Icon System
+
+This project uses **Lucide React** icons for a modern, professional appearance. Icons are used throughout the interface to enhance:
+- Visual hierarchy and navigation
+- Quick recognition of metrics and indicators
+- User feedback for different states
+- Overall aesthetic and user experience
+
+For detailed information about the icon system, see:
+- **[ICON_ENHANCEMENTS.md](./ICON_ENHANCEMENTS.md)** - Complete guide to icon implementations
+- **[ICONS_QUICK_REFERENCE.md](./ICONS_QUICK_REFERENCE.md)** - Quick reference for developers

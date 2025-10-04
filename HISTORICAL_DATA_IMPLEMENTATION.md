@@ -148,3 +148,4 @@ Possible improvements:
 - Support for additional data sources beyond Yahoo Finance
 - Volume charts and advanced technical analysis tools
 
+

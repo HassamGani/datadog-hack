@@ -214,6 +214,11 @@ export async function callTradingAgent(
   context: TradingAgentContext
 ): Promise<AgentResponse> {
   try {
+    // Check if API key is configured
+    if (!process.env.NEXT_PUBLIC_OPENAI_API_KEY) {
+      throw new Error("OpenAI API key is not configured. Please add NEXT_PUBLIC_OPENAI_API_KEY to your .env.local file.");
+    }
+
     // Build system message with current context
     const dataModeSuffix = context.dataMode === "historical" && context.historicalDateRange
       ? `\n- Data Mode: Historical (${context.historicalDateRange.startDate} to ${context.historicalDateRange.endDate})`
@@ -418,20 +423,31 @@ export function executeTool(
 
     case "add_useful_source": {
       const { title, url, snippet } = args;
-      if (!addUsefulSource) {
-        return "Unable to add source - no handler provided";
+      
+      // Validate inputs
+      if (!title || !url || !snippet) {
+        return "Error: Missing required fields (title, url, or snippet) for adding source";
       }
 
-      const newSource: UsefulSource = {
-        id: `source_${Date.now()}`,
-        title,
-        url,
-        snippet,
-        addedAt: Date.now(),
-      };
+      if (!addUsefulSource) {
+        return "Unable to add source - functionality not available in current context";
+      }
 
-      addUsefulSource(newSource);
-      return `Added "${title}" to useful sources`;
+      try {
+        const newSource: UsefulSource = {
+          id: `source_${Date.now()}`,
+          title: String(title).trim(),
+          url: String(url).trim(),
+          snippet: String(snippet).trim(),
+          addedAt: Date.now(),
+        };
+
+        addUsefulSource(newSource);
+        return `✅ Successfully added "${title}" to Useful Sources panel`;
+      } catch (error) {
+        console.error("Error adding useful source:", error);
+        return `Failed to add source: ${error instanceof Error ? error.message : "Unknown error"}`;
+      }
     }
 
     default:
