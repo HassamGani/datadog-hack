@@ -6,6 +6,9 @@
 import { getServiceConfig } from '../config';
 import type { RawNews, GetRawNewsInput } from '../types';
 
+/**
+ * Real Senso.ai client (kept as-is)
+ */
 export class SensoAiClient {
   private config = getServiceConfig().sensoAi;
 
@@ -71,11 +74,33 @@ export class SensoAiClient {
   }
 }
 
-let sensoAiClient: SensoAiClient | null = null;
+/**
+ * No-op client used when Senso.ai is disabled or not configured.
+ * Returns safe empty results so pipelines and tools can continue to operate.
+ */
+class NoopSensoAiClient {
+  async searchNews(_: GetRawNewsInput): Promise<RawNews[]> {
+    return [];
+  }
 
-export function getSensoAiClient(): SensoAiClient {
+  async getAltData(_: string, __: string, ___: string): Promise<any[]> {
+    return [];
+  }
+}
+
+let sensoAiClient: SensoAiClient | NoopSensoAiClient | null = null;
+
+export function getSensoAiClient(): SensoAiClient | NoopSensoAiClient {
   if (!sensoAiClient) {
-    sensoAiClient = new SensoAiClient();
+    const cfg = getServiceConfig().sensoAi;
+    const disableFlag = (typeof process !== 'undefined' && process.env && process.env.DISABLE_SENSO === '1');
+
+    if (!cfg.apiKey || disableFlag) {
+      // Return a no-op client when the API key is missing or the feature flag is set
+      sensoAiClient = new NoopSensoAiClient();
+    } else {
+      sensoAiClient = new SensoAiClient();
+    }
   }
   return sensoAiClient;
 }

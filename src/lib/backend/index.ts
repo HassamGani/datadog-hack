@@ -21,6 +21,9 @@ export { getOpenHandsAgent } from './services/openhands';
 export { getPhenomlClient } from './services/phenoml';
 export { getFreepikClient } from './services/freepik';
 
+// Local import for runtime checks
+import { getSensoAiClient } from './services/senso-ai';
+
 // Tools & MCP
 export { ALL_TOOLS } from './tools';
 export { getMCPServer } from './mcp/server';
@@ -51,7 +54,18 @@ export async function initializeBackend() {
 
   // 2. Senso.ai
   console.log('📰 Senso.ai: News & contextual retrieval');
-  console.log('   Status: ✅ Configured\n');
+  try {
+    // Detect if Senso is enabled by checking the client type or env flag
+    const senso = getSensoAiClient();
+    const disableFlag = (typeof process !== 'undefined' && process.env && process.env.DISABLE_SENSO === '1');
+    if (disableFlag || senso.constructor && senso.constructor.name === 'NoopSensoAiClient') {
+      console.log('   Status: ⚠️ Disabled (using noop client)\n');
+    } else {
+      console.log('   Status: ✅ Configured\n');
+    }
+  } catch (e) {
+    console.log('   Status: ⚠️ Disabled or not configured\n');
+  }
 
   // 3. Structify
   console.log('📄 Structify: Document structure extraction');

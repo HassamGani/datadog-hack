@@ -34,6 +34,7 @@ yarn-error.log*
 # local env files
 .env*.local
 .env
+.env.example
 
 # API keys - Keep example files but ignore the actual keys
 # src/lib/api-keys.example.ts is committed (template)
