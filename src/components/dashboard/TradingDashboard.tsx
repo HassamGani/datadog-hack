@@ -52,8 +52,9 @@ export default function TradingDashboard() {
   
   // Historical data state
   const [historicalStartDate, setHistoricalStartDate] = useState(() => {
+    // one year ago
     const date = new Date();
-    date.setMonth(date.getMonth() - 1);
+    date.setDate(date.getDate() - 365);
     return date.toISOString().split('T')[0];
   });
   const [historicalEndDate, setHistoricalEndDate] = useState(() => {
@@ -66,8 +67,8 @@ export default function TradingDashboard() {
   const [isLoadingHistorical, setIsLoadingHistorical] = useState(false);
   const [historicalError, setHistoricalError] = useState<string | null>(null);
 
-  const { quote: realtimeQuote, history: realtimeHistory, isLoading: isLoadingRealtime, error: realtimeError, isStreaming, setSymbol: setRealtimeSymbol, toggleStreaming } =
-    useFinnhubQuote({ symbol: DEFAULT_SYMBOLS[0] });
+  const { quote: realtimeQuote, history: realtimeHistory, isLoading: isLoadingRealtime, error: realtimeError, isStreaming, toggleStreaming } =
+    useFinnhubQuote({ symbol: selectedSymbol });
 
   // Get current data based on mode
   const quote = dataMode === "realtime" ? realtimeQuote : historicalData.quote;
@@ -150,7 +151,8 @@ export default function TradingDashboard() {
     if (dataMode === "historical" && selectedSymbol && historicalStartDate && historicalEndDate) {
       fetchHistoricalData();
     }
-  }, [selectedSymbol, dataMode, historicalStartDate, historicalEndDate, fetchHistoricalData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSymbol, dataMode, historicalStartDate, historicalEndDate]);
 
   // Handle data mode change
   const handleDataModeChange = (_: unknown, newMode: DataMode | null) => {
@@ -161,9 +163,8 @@ export default function TradingDashboard() {
   const handleSymbolChange = (_: unknown, nextSymbol: string | null) => {
     if (!nextSymbol) return;
     
-    // Update both the selected symbol and realtime symbol
+    // Update the selected symbol (realtime hook will react automatically)
     setSelectedSymbol(nextSymbol);
-    setRealtimeSymbol(nextSymbol);
     setCustomSymbol("");
     
     // The useEffect will automatically fetch new historical data if in historical mode
@@ -173,9 +174,8 @@ export default function TradingDashboard() {
     e.preventDefault();
     const trimmedSymbol = customSymbol.trim().toUpperCase();
     if (trimmedSymbol) {
-      // Update both the selected symbol and realtime symbol
+      // Update the selected symbol (realtime hook will react automatically)
       setSelectedSymbol(trimmedSymbol);
-      setRealtimeSymbol(trimmedSymbol);
       
       // The useEffect will automatically fetch new historical data if in historical mode
     }
@@ -309,7 +309,11 @@ export default function TradingDashboard() {
                     size="small"
                     value={historicalStartDate}
                     onChange={(e) => setHistoricalStartDate(e.target.value)}
-                    InputLabelProps={{ shrink: true }}
+                    slotProps={{
+                      inputLabel: {
+                        shrink: true,
+                      },
+                    }}
                     sx={{ minWidth: 160 }}
                   />
                   <TextField
@@ -318,7 +322,11 @@ export default function TradingDashboard() {
                     size="small"
                     value={historicalEndDate}
                     onChange={(e) => setHistoricalEndDate(e.target.value)}
-                    InputLabelProps={{ shrink: true }}
+                    slotProps={{
+                      inputLabel: {
+                        shrink: true,
+                      },
+                    }}
                     sx={{ minWidth: 160 }}
                   />
                   <Button

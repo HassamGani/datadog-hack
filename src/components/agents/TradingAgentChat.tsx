@@ -336,6 +336,7 @@ export default function TradingAgentChat({ context, setIndicators, addUsefulSour
                     sx={{ 
                       whiteSpace: "pre-wrap",
                       wordBreak: "break-word",
+                      color: message.role === "user" ? "primary.contrastText" : "text.primary",
                     }}
                   >
                     {message.content}
@@ -376,7 +377,7 @@ export default function TradingAgentChat({ context, setIndicators, addUsefulSour
               placeholder="Ask me anything about the market or indicators..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyPress={handleKeyPress}
+              onKeyDown={handleKeyPress}
               disabled={isLoading}
               multiline
               maxRows={3}

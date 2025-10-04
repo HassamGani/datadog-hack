@@ -36,6 +36,13 @@ export function useFinnhubQuote(
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   
+  // Sync internal symbol state with prop changes
+  useEffect(() => {
+    if (initialSymbol !== symbol) {
+      setSymbol(initialSymbol);
+    }
+  }, [initialSymbol, symbol]);
+  
   const wsRef = useRef<WebSocket | null>(null);
   const currentSymbolRef = useRef<string>(symbol);
   const dailyStatsRef = useRef<{

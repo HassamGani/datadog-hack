@@ -70,14 +70,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Transform data to match our format
+    // Transform data to match our format (StreamingPoint)
     const historicalData = result.map((item) => ({
       time: Math.floor(new Date(item.date).getTime() / 1000),
       value: item.close,
-      open: item.open,
-      high: item.high,
-      low: item.low,
-      volume: item.volume,
     }));
 
     // Calculate statistics for quote-like data
