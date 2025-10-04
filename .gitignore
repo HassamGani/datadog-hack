@@ -31,7 +31,15 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
-.env*
+# local env files
+.env*.local
+.env
+
+# API keys - Keep example files but ignore the actual keys
+# src/lib/api-keys.example.ts is committed (template)
+# src/lib/api-keys.ts is tracked and loads from .env
+# .env.example is committed (template)
+# .env is ignored (contains actual keys)
 
 # vercel
 .vercel
