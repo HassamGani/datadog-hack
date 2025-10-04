@@ -2,14 +2,17 @@
 
 import { useEffect, useRef } from "react";
 import { Box, Stack, Typography } from "@mui/material";
-import { createChart, ISeriesApi, LineStyle, Time, AreaSeries } from "lightweight-charts";
+import { AlertCircle, TrendingUp, BarChart3 } from "lucide-react";
+import { createChart, ISeriesApi, LineStyle, Time, AreaSeries, LineSeries } from "lightweight-charts";
 import type { StreamingPoint } from "@/lib/types";
+import type { IndicatorSeries } from "@/lib/indicators/types";
 
 interface LightweightChartProps {
   symbol: string;
   data: StreamingPoint[];
   isLoading: boolean;
   error: string | null;
+  indicators?: IndicatorSeries[];
 }
 
 export default function LightweightChart({
@@ -17,10 +20,12 @@ export default function LightweightChart({
   data,
   isLoading,
   error,
+  indicators = [],
 }: LightweightChartProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<ReturnType<typeof createChart> | null>(null);
   const seriesRef = useRef<ISeriesApi<"Area"> | null>(null);
+  const indicatorSeriesRef = useRef<Map<string, ISeriesApi<"Line">>>(new Map());
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -81,6 +86,7 @@ export default function LightweightChart({
       chart.remove();
       chartRef.current = null;
       seriesRef.current = null;
+      indicatorSeriesRef.current.clear();
     };
   }, [symbol]);
 
@@ -110,9 +116,52 @@ export default function LightweightChart({
     }
   }, [data]);
 
+  // Update indicator series
+  useEffect(() => {
+    if (!chartRef.current) return;
+
+    const chart = chartRef.current;
+    const currentSeries = indicatorSeriesRef.current;
+    const newSeriesMap = new Map<string, ISeriesApi<"Line">>();
+
+    // Remove series that are no longer in indicators
+    for (const [id, series] of currentSeries.entries()) {
+      if (!indicators.find(ind => ind.id === id)) {
+        chart.removeSeries(series);
+      }
+    }
+
+    // Add or update indicator series
+    for (const indicator of indicators) {
+      let series = currentSeries.get(indicator.id);
+      
+      if (!series) {
+        // Create new series
+        series = chart.addSeries(LineSeries, {
+          color: indicator.color,
+          lineWidth: (indicator.lineWidth || 2) as any,
+          priceLineVisible: indicator.priceLineVisible ?? false,
+          lastValueVisible: false,
+          title: indicator.name,
+        });
+      }
+
+      // Update data
+      const formattedData = indicator.data.map(point => ({
+        time: point.time as Time,
+        value: point.value,
+      }));
+      series.setData(formattedData);
+      newSeriesMap.set(indicator.id, series);
+    }
+
+    indicatorSeriesRef.current = newSeriesMap;
+  }, [indicators]);
+
   if (error) {
     return (
       <Stack spacing={1} alignItems="center" justifyContent="center" sx={{ height: "100%" }}>
+        <AlertCircle size={48} style={{ color: '#f44336' }} />
         <Typography color="error.main">{error}</Typography>
         <Typography variant="body2" color="text.secondary">
           Try again later or check your Finnhub API key configuration.
@@ -124,6 +173,7 @@ export default function LightweightChart({
   if (isLoading && data.length === 0) {
     return (
       <Stack spacing={1} alignItems="center" justifyContent="center" sx={{ height: "100%" }}>
+        <TrendingUp size={48} style={{ color: '#9e9e9e' }} />
         <Typography color="text.secondary">Loading {symbol} data…</Typography>
       </Stack>
     );
@@ -146,6 +196,7 @@ export default function LightweightChart({
             pointerEvents: "none",
           }}
         >
+          <BarChart3 size={48} style={{ color: '#9e9e9e' }} />
           <Typography color="text.secondary" variant="body2">
             Collecting data for {symbol}...
           </Typography>
