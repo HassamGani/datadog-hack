@@ -92,10 +92,15 @@ export default function LightweightChart({
       return;
     }
 
-    const formatted = data.map(({ time, value }) => ({
-      time: time as Time,
-      value,
-    }));
+    // Format and deduplicate data, ensuring ascending time order
+    const uniqueData = new Map<number, number>();
+    data.forEach(({ time, value }) => {
+      uniqueData.set(time, value);
+    });
+
+    const formatted = Array.from(uniqueData.entries())
+      .map(([time, value]) => ({ time: time as Time, value }))
+      .sort((a, b) => (a.time as number) - (b.time as number));
 
     seriesRef.current.setData(formatted);
     
