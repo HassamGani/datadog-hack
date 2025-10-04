@@ -55,10 +55,17 @@ export function useFinnhubQuote(
 
         setQuote(data);
         setHistory((prev) => {
-          const next: StreamingPoint[] = [
-            ...prev,
-            { time: Math.floor(data.timestamp / 1000), value: data.current },
-          ];
+          const newTime = Math.floor(data.timestamp / 1000);
+          const newPoint: StreamingPoint = { time: newTime, value: data.current };
+          
+          // Check if this timestamp already exists or is not newer than the last point
+          const lastPoint = prev[prev.length - 1];
+          if (lastPoint && newTime <= lastPoint.time) {
+            // Skip this point if it's not newer than the last one
+            return prev;
+          }
+          
+          const next: StreamingPoint[] = [...prev, newPoint];
           const cutoff = Math.floor(Date.now() / 1000) - 60 * 60;
           return next.filter((point) => point.time >= cutoff);
         });
