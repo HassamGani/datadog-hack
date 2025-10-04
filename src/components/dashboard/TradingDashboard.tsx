@@ -14,8 +14,12 @@ import {
   ToggleButtonGroup,
   Typography,
   alpha,
+  TextField,
+  Button,
+  InputAdornment,
+  Alert,
 } from "@mui/material";
-import { TrendingUp, TrendingDown } from "@mui/icons-material";
+import { TrendingUp, TrendingDown, Search } from "@mui/icons-material";
 import dynamic from "next/dynamic";
 import { useFinnhubQuote } from "@/hooks/useFinnhubQuote";
 
@@ -24,16 +28,28 @@ const LightweightChart = dynamic(() => import("@/components/trading/LightweightC
 });
 
 const DEFAULT_SYMBOLS = ["AAPL", "MSFT", "TSLA", "NVDA", "META", "AMZN"];
+const CRYPTO_SYMBOLS = ["BINANCE:BTCUSDT", "BINANCE:ETHUSDT", "BINANCE:SOLUSDT"];
 
 export default function TradingDashboard() {
-  const [symbol, setSymbol] = useState(DEFAULT_SYMBOLS[0]);
-  const { quote, history, isLoading, error, setSymbol: updateSymbol } =
-    useFinnhubQuote({ symbol });
+  const [customSymbol, setCustomSymbol] = useState("");
+  const { quote, history, isLoading, error, setSymbol } =
+    useFinnhubQuote({ symbol: DEFAULT_SYMBOLS[0] });
+
+  // Get current symbol from quote or use default
+  const currentSymbol = quote?.symbol || DEFAULT_SYMBOLS[0];
 
   const handleSymbolChange = (_: unknown, nextSymbol: string | null) => {
     if (!nextSymbol) return;
     setSymbol(nextSymbol);
-    updateSymbol(nextSymbol);
+    setCustomSymbol("");
+  };
+
+  const handleCustomSymbolSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmedSymbol = customSymbol.trim().toUpperCase();
+    if (trimmedSymbol) {
+      setSymbol(trimmedSymbol);
+    }
   };
 
   const changeColor = quote && quote.change >= 0 ? "success.main" : "error.main";
@@ -62,52 +78,118 @@ export default function TradingDashboard() {
         </Typography>
       </Stack>
 
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
+
+      <Alert severity="info" sx={{ mb: 3 }}>
+        <Typography variant="body2">
+          <strong>Tip:</strong> For stocks, use ticker symbols like AAPL, GOOGL, or TSLA. For crypto, use the format EXCHANGE:PAIR (e.g., BINANCE:BTCUSDT, COINBASE:BTCUSD).
+        </Typography>
+      </Alert>
+
       <Card sx={{ mb: 4 }}>
         <CardContent>
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            justifyContent="space-between"
-            alignItems={{ xs: "flex-start", sm: "center" }}
-            spacing={2}
-          >
-            <Box>
-              <Typography variant="h5" sx={{ fontWeight: 600 }}>
-                {symbol}
-              </Typography>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <Typography variant="h3" sx={{ fontWeight: 600 }}>
-                  {quote ? quote.current.toFixed(2) : "--"}
-                </Typography>
-                {quote && (
-                  <Chip
-                    color={quote.change >= 0 ? "success" : "error"}
-                    icon={<ChangeIcon fontSize="small" />}
-                    label={`${quote.change >= 0 ? "+" : ""}${quote.change.toFixed(2)} (${quote.percentChange.toFixed(2)}%)`}
-                  />
-                )}
-              </Stack>
-            </Box>
-
-            <ToggleButtonGroup
-              exclusive
-              value={symbol}
-              size="small"
-              onChange={handleSymbolChange}
-              aria-label="Select symbol"
+          <Stack spacing={3}>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              justifyContent="space-between"
+              alignItems={{ xs: "flex-start", sm: "center" }}
+              spacing={2}
             >
-              {DEFAULT_SYMBOLS.map((ticker) => (
-                <ToggleButton key={ticker} value={ticker} aria-label={ticker}>
-                  {ticker}
-                </ToggleButton>
-              ))}
-            </ToggleButtonGroup>
-          </Stack>
+              <Box>
+                <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                  {currentSymbol}
+                </Typography>
+                <Stack direction="row" alignItems="center" spacing={2}>
+                  <Typography variant="h3" sx={{ fontWeight: 600 }}>
+                    {quote ? quote.current.toFixed(2) : "--"}
+                  </Typography>
+                  {quote && (
+                    <Chip
+                      color={quote.change >= 0 ? "success" : "error"}
+                      icon={<ChangeIcon fontSize="small" />}
+                      label={`${quote.change >= 0 ? "+" : ""}${quote.change.toFixed(2)} (${quote.percentChange.toFixed(2)}%)`}
+                    />
+                  )}
+                </Stack>
+              </Box>
 
-          <Stack direction="row" spacing={3} mt={3} flexWrap="wrap">
-            <Metric label="Daily high" value={quote?.high} prefix="$" />
-            <Metric label="Daily low" value={quote?.low} prefix="$" />
-            <Metric label="Open" value={quote?.open} prefix="$" />
-            <Metric label="Prev Close" value={quote?.previousClose} prefix="$" />
+              <Box component="form" onSubmit={handleCustomSymbolSubmit}>
+                <TextField
+                  size="small"
+                  placeholder="Enter symbol (e.g., GOOGL, BINANCE:BTCUSDT)"
+                  value={customSymbol}
+                  onChange={(e) => setCustomSymbol(e.target.value)}
+                  sx={{ minWidth: { xs: "100%", sm: 300 } }}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <Button
+                          type="submit"
+                          size="small"
+                          variant="contained"
+                          sx={{ minWidth: "auto" }}
+                        >
+                          <Search />
+                        </Button>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Box>
+            </Stack>
+
+            <Stack spacing={1.5}>
+              <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.8 }}>
+                Quick Select - Stocks
+              </Typography>
+              <ToggleButtonGroup
+                exclusive
+                value={DEFAULT_SYMBOLS.includes(currentSymbol) ? currentSymbol : null}
+                size="small"
+                onChange={handleSymbolChange}
+                aria-label="Select stock symbol"
+                sx={{ flexWrap: "wrap" }}
+              >
+                {DEFAULT_SYMBOLS.map((ticker) => (
+                  <ToggleButton key={ticker} value={ticker} aria-label={ticker}>
+                    {ticker}
+                  </ToggleButton>
+                ))}
+              </ToggleButtonGroup>
+            </Stack>
+
+            <Stack spacing={1.5}>
+              <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.8 }}>
+                Quick Select - Crypto
+              </Typography>
+              <ToggleButtonGroup
+                exclusive
+                value={CRYPTO_SYMBOLS.includes(currentSymbol) ? currentSymbol : null}
+                size="small"
+                onChange={handleSymbolChange}
+                aria-label="Select crypto symbol"
+                sx={{ flexWrap: "wrap" }}
+              >
+                {CRYPTO_SYMBOLS.map((ticker) => (
+                  <ToggleButton key={ticker} value={ticker} aria-label={ticker}>
+                    {ticker.split(":")[1] || ticker}
+                  </ToggleButton>
+                ))}
+              </ToggleButtonGroup>
+            </Stack>
+
+            <Divider />
+
+            <Stack direction="row" spacing={3} flexWrap="wrap">
+              <Metric label="Daily high" value={quote?.high} prefix="$" />
+              <Metric label="Daily low" value={quote?.low} prefix="$" />
+              <Metric label="Open" value={quote?.open} prefix="$" />
+              <Metric label="Prev Close" value={quote?.previousClose} prefix="$" />
+            </Stack>
           </Stack>
         </CardContent>
       </Card>
@@ -121,7 +203,7 @@ export default function TradingDashboard() {
             />
             <CardContent sx={{ flexGrow: 1, minHeight: 0 }}>
               <LightweightChart
-                symbol={symbol}
+                symbol={currentSymbol}
                 data={history}
                 isLoading={isLoading}
                 error={error}

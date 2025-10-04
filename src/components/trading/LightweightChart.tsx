@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { Box, Stack, Typography } from "@mui/material";
-import { createChart, ISeriesApi, LineStyle, Time } from "lightweight-charts";
+import { createChart, ISeriesApi, LineStyle, Time, AreaSeries } from "lightweight-charts";
 import type { StreamingPoint } from "@/lib/types";
 
 interface LightweightChartProps {
@@ -25,7 +25,12 @@ export default function LightweightChart({
   useEffect(() => {
     if (!containerRef.current) return;
 
-    if (chartRef.current) return;
+    // Clean up existing chart if symbol changes
+    if (chartRef.current) {
+      chartRef.current.remove();
+      chartRef.current = null;
+      seriesRef.current = null;
+    }
 
     const chart = createChart(containerRef.current, {
       layout: {
@@ -56,7 +61,7 @@ export default function LightweightChart({
       autoSize: true,
     });
 
-    const areaSeries = chart.addAreaSeries({
+    const areaSeries = chart.addSeries(AreaSeries, {
       lineColor: "#5b8def",
       topColor: "rgba(91, 141, 239, 0.4)",
       bottomColor: "rgba(91, 141, 239, 0.05)",
@@ -77,11 +82,15 @@ export default function LightweightChart({
       chartRef.current = null;
       seriesRef.current = null;
     };
-  }, []);
+  }, [symbol]);
 
   useEffect(() => {
     if (!seriesRef.current) return;
-    if (!data?.length) return;
+
+    if (!data?.length) {
+      seriesRef.current.setData([]);
+      return;
+    }
 
     const formatted = data.map(({ time, value }) => ({
       time: time as Time,
@@ -89,6 +98,11 @@ export default function LightweightChart({
     }));
 
     seriesRef.current.setData(formatted);
+    
+    // Auto-fit the chart to show all data
+    if (chartRef.current) {
+      chartRef.current.timeScale().fitContent();
+    }
   }, [data]);
 
   if (error) {
@@ -110,6 +124,32 @@ export default function LightweightChart({
     );
   }
 
-  return <Box ref={containerRef} sx={{ width: "100%", height: "100%" }} />;
+  return (
+    <Box sx={{ width: "100%", height: "100%", position: "relative" }}>
+      <Box ref={containerRef} sx={{ width: "100%", height: "100%" }} />
+      {data.length === 0 && !isLoading && !error && (
+        <Stack
+          spacing={1}
+          alignItems="center"
+          justifyContent="center"
+          sx={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            pointerEvents: "none",
+          }}
+        >
+          <Typography color="text.secondary" variant="body2">
+            Collecting data for {symbol}...
+          </Typography>
+          <Typography color="text.secondary" variant="caption">
+            Chart will appear once data is available
+          </Typography>
+        </Stack>
+      )}
+    </Box>
+  );
 }
 

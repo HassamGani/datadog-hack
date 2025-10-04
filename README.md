@@ -2,6 +2,20 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
+### 1. Set Up Your Finnhub API Key
+
+This app requires a free Finnhub API key to fetch real-time stock data.
+
+1. Visit [https://finnhub.io/register](https://finnhub.io/register) and create a free account
+2. Copy your API key from the dashboard
+3. Open the `.env.local` file in the root directory
+4. Replace `YOUR_API_KEY_HERE` with your actual API key:
+   ```
+   FINNHUB_API_KEY=your_actual_api_key_here
+   ```
+
+### 2. Run the Development Server
+
 First, run the development server:
 
 ```bash
